@@ -14,27 +14,6 @@ cron：23 7-23/1 * * *
 
 import hashlib
 import json
-import os
-import re
-import time
-
-import requests
-
-response = requests.get('https://netcut.cn/p/e9a1ac26ab3e543b')
-note_content_list = re.findall(r'"note_content":"(.*?)"', response.text)
-formatted_note_content_list = [note.replace('\\n', '\n').replace('\\/', '/') for note in note_content_list]
-for note in formatted_note_content_list:
-    print(note)
-
-# 获取 xwytoken 环境变量值
-accounts = os.getenv('ydtoken')
-
-# 检查 xwytoken 是否存在
-if accounts is None:
-    print('你没有填入ydtoken，咋运行？')
-else:
-    # 获取环境变量的值，并按指定字符串分割成多个账号的参数组合
-    accounts_list = os.environ.get('ydtoken').split('====')
 
     # 输出有几个账号
     num_of_accounts = len(accounts_list)
