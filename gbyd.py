@@ -1,153 +1,324 @@
-"""
-微信阅读_V1.4   入口：http://2477726.hvsgzwxl.wjbk.vqz6vwc7u5.cloud/?p=2477726
-阅读文章抓出cookie（找不到搜索Cookie关键词） 建议手动阅读5篇左右再使用脚本，不然100%黑！！！2小时一次
-8/18_update 修复bug
-8/22_update  增加推送检测文章   将多个账号检测文章推送至目标微信，手动点击链接完成检测阅读
-key为企业微信webhook机器人后面的 key
-export ydtoken=cookie@key
-多账号用'===='隔开 例 账号1====账号2
-cron：23 7-23/1 * * *
-"""
+'''
+活动入口,微信打开：http://2478987.epghgkvalp.wjbk.25obcxyume.cloud/?p=2478987
+打开活动入口，抓包的任意接口cookies中的gfsessionid参数,
+填到脚本下方的,
+脚本下方的,
+脚本下方的 CKList配置中,把xxxx替换成你的gfsessionid参数
+单账户 CKList=[{'gfsessionid': 'xxxx'}]
+多账户CKList=[{'gfsessionid': 'xxxx'},{'gfsessionid': 'xxxx'},{'gfsessionid': 'xxxx'},]
 
+其他参数说明（脚本最下方填写参数）
 
+内置推送第三方 wxpusher（脚本最下方填写参数）
+appToken = 'xxx'  # 这个是填wxpusher的appToken
+topicIds = 0  # 这个是wxpusher的topicIds改成你自己的
+具体使用方法请看文档地址：https://wxpusher.zjiecode.com/docs/#/
 
+回调服务器（脚本最下方填写参数）
+key=''这个是回调服务器的key
+key访问http://175.24.153.42:8882/getkey获取
 
+定时运行每小时一次
+达到标准自动提现
+'''
+import time
 import hashlib
-import json
+import requests
+import random
+import re
+checkDict = {
+    'MzkyMzI5NjgxMA==': ['每天趣闻事', ''],
+    'MzkzMzI5NjQ3MA==': ['欢闹青春', ''],
+    'Mzg5NTU4MzEyNQ==': ['推粉宝助手', ''],
+    'Mzg3NzY5Nzg0NQ==': ['新鲜事呦', ''],
+    'MzU5OTgxNjg1Mg==': ['动感比特', ''],
+    'Mzg4OTY5Njg4Mw==': ['邻居趣事闻', 'gh_60ba451e6ad7'],
+    'MzI1ODcwNTgzNA==': ['麻辣资讯', 'gh_1df5b5259cba'],
+}
+def getmsg():
+    lvsion = 'v1.1'
+    r=''
+    try:
+        u='http://175.24.153.42:8881/getmsg'
+        p={'type':'czgm'}
+        r=requests.get(u,params=p)
+        rj=r.json()
+        version=rj.get('version')
+        gdict = rj.get('gdict')
+        gmmsg = rj.get('gmmsg')
+        print('系统公告:',gmmsg)
+        print(f'最新版本{version},当前版本{lvsion}')
+        print(f'系统的公众号字典{len(gdict)}个:{gdict}')
+        print(f'本脚本公众号字典{len(checkDict.values())}个:{list(checkDict.keys())}')
+        print('='*50)
+    except Exception as e:
+        print(r.text)
+        print(e)
+        print('公告服务器异常')
+def printjson(text):
+    if printf==0:
+        return
+    print(text)
+def push(title,link,text,type):
+    str1='''<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<title>TITLE</title>
+<style type=text/css>
+   body {
+   	background-image: linear-gradient(120deg, #fdfbfb 0%, #a5d0e5 100%);
+    background-size: 300%;
+    animation: bgAnimation 6s linear infinite;
+}
+@keyframes bgAnimation {
+    0% {background-position: 0% 50%;}
+    50% {background-position: 100% 50%;}
+    100% {background-position: 0% 50%;}
+}
+</style>
+</head>
+<body>
+<p>TEXT</p><br>
+<p><a href="http://175.24.153.42:8882/lookstatus?key=KEY&type=TYPE">查看状态</a></p><br>
+<p><a href="http://175.24.153.42:8882/lookwxarticle?key=KEY&type=TYPE&wxurl=LINK">点击阅读检测文章</a></p><br>
+</body>
+</html>
+    '''
+    content=str1.replace('TITTLE',title).replace('LINK',link).replace('TEXT',text).replace('TYPE',type).replace('KEY',key)
+    datapust = {
+      "appToken":appToken,
+      "content":content,
+      "summary":title,
+      "contentType":2,
+      "topicIds":[topicIds],
+    }
+    urlpust = 'http://wxpusher.zjiecode.com/api/send/message'
+    try:
+        p = requests.post(url=urlpust, json=datapust).text
+        print(p)
+        return True
+    except:
+        print('推送失败！')
+        return False
+def sha_256(text):
+    hash = hashlib.sha256()
+    hash.update(text.encode())
+    t = hash.hexdigest()
+    return t
 
-    # 输出有几个账号
-    num_of_accounts = len(accounts_list)
-    print(f"获取到 {num_of_accounts} 个账号")
+def getinfo(link):
+    try:
+        r=requests.get(link)
+        #print(r.text)
+        html = re.sub('\s', '', r.text)
+        biz=re.findall('varbiz="(.*?)"\|\|', html)
+        if biz!=[]:
+            biz=biz[0]
+        if biz=='' or biz==[]:
+            if '__biz' in link:
+                biz = re.findall('__biz=(.*?)&', link)
+                if biz != []:
+                    biz = biz[0]
+        nickname = re.findall('varnickname=htmlDecode\("(.*?)"\);', html)
+        if nickname!=[]:
+            nickname=nickname[0]
+        user_name = re.findall('varuser_name="(.*?)";', html)
+        if user_name!=[]:
+            user_name=user_name[0]
+        msg_title = re.findall("varmsg_title='(.*?)'\.html\(", html)
+        if msg_title!=[]:
+            msg_title=msg_title[0]
+        text=f'公众号唯一标识：{biz}|文章:{msg_title}|作者:{nickname}|账号:{user_name}'
+        print(text)
+        return nickname,user_name,msg_title,text,biz
+    except Exception as e:
+        print(e)
+        print('异常')
+        return False
+def setstatus():
+    u='http://175.24.153.42:8882/setstatus'
+    p={'key':key,'type':'czgm','val':'1'}
+    r=requests.get(u,params=p)
+    print(r.text)
 
-    # 遍历所有账号
-    for i, account in enumerate(accounts_list, start=1):
-        # 按@符号分割当前账号的不同参数
-        values = account.split('@')
-        cookie,key = values[0],values[1]
-        # 输出当前正在执行的账号
-        print(f"\n=======开始执行账号{i}=======")
-        current_time = str(int(time.time()))
+def getstatus():
+    u = 'http://175.24.153.42:8882/getstatus'
+    p = {'key':key,'type': 'czgm'}
+    r = requests.get(u, params=p)
+    return r.text
 
-        # 计算 sign
-        sign_str = f'key=4fck9x4dqa6linkman3ho9b1quarto49x0yp706qi5185o&time={current_time}'
-        sha256_hash = hashlib.sha256(sign_str.encode())
-        sign = sha256_hash.hexdigest()
-        url = "http://2477726.neavbkz.jweiyshi.r0ffky3twj.cloud/share"
-        headers = {
-            "User-Agent": "Mozilla/5.0 (Linux; Android 9; V1923A Build/PQ3B.190801.06161913; wv) AppleWebKit/537.36 (KHTML, like Gecko) Version/4.0 Chrome/91.0.4472.114 Safari/537.36 MMWEBID/5635 MicroMessenger/8.0.40.2420(0x28002837) WeChat/arm64 Weixin Android Tablet NetType/WIFI Language/zh_CN ABI/arm64",
-            "Cookie": cookie
+class HHYD():
+    def __init__(self, cg):
+        self.headers = {
+            'Host': '2478987.jilixczlz.ix47965in5.cloud',
+            'Connection': 'keep-alive',
+            'Accept': 'application/json, text/plain, */*',
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/107.0.0.0 Safari/537.36 NetType/WIFI MicroMessenger/7.0.20.1781(0x6700143B) WindowsWechat(0x63090621) XWEB/8351 Flue',
+            'Accept-Encoding': 'gzip, deflate',
+            'Accept-Language': 'zh-CN,zh',
+            'Cookie': f'gfsessionid={cg["gfsessionid"]}',
         }
+        self.sec = requests.session()
+        self.sec.headers = self.headers
 
-        data = {
-            "time": current_time,
-            "sign": sign
-        }
-        response = requests.get(url, headers=headers, json=data).json()
-        share_link = response['data']['share_link'][0]
-        p_value = share_link.split('=')[1].split('&')[0]
-
-        url = "http://2477726.neavbkz.jweiyshi.r0ffky3twj.cloud/read/info"
-
-        response = requests.get(url, headers=headers, json=data).json()
-
-        if response['code'] == 0:
-            remain = response['data']['remain']
-            read = response['data']['read']
-            print(f"ID:{p_value}-----钢镚余额:{remain}\n今日阅读量::{read}\n推广链接:{share_link}")
-        else:
-            print(response['message'])
-
-        print("============开始执行阅读文章============")
-        for i in range(30):
-            # 计算 sign
-            sign_str = f'key=4fck9x4dqa6linkman3ho9b1quarto49x0yp706qi5185o&time={current_time}'
-            sha256_hash = hashlib.sha256(sign_str.encode())
-            sign = sha256_hash.hexdigest()
-            url = "http://2477726.9o.10r8cvn6b1.cloud/read/task"
-
-            response = requests.get(url, headers=headers, json=data).json()
-
-            if response['code'] == 1:
-                print(response['message'])
-                break
+    def user_info(self):
+        ts = int(time.time())
+        text = f'key=4fck9x4dqa6linkman3ho9b1quarto49x0yp706qi5185o&time={ts}'
+        sign = sha_256(text)
+        u = f'http://2478987.jilixczlz.ix47965in5.cloud/user/info?time={ts}&sign={sign}'
+        r = ''
+        try:
+            r = self.sec.get(u)
+            rj = r.json()
+            if rj.get('code') == 0:
+                print(f'用户UID:{rj.get("data").get("uid")}')
+                return True
             else:
-                try:
-                    mid = response['data']['link'].split('&mid=')[1].split('&')[0]
-                    print(f"获取文章成功---{mid}")
-                    import time
+                print(f'获取用户信息失败，账号异常')
+                return False
+        except:
+            print(r.text)
+            print(f'获取用户信息失败,gfsessionid无效，请检测gfsessionid是否正确')
+            return False
 
-                    time.sleep(10)
-                    url = "http://2477726.9o.10r8cvn6b1.cloud/read/finish"
-                    response = requests.post(url, headers=headers, data=data).json()
-                    if response['code'] == 0:
-                        if response['data']['check'] is False:
-                            gain = response['data']['gain']
-                            print(f"阅读文章成功---获得钢镚[{gain}]")
-                        else:
-                            if key == "":
-                                print("check=True,key为空，不执行推送")
-                                break
-                            else:
-                                print("check=True,准备执行")
-                                url = "http://2477726.9o.10r8cvn6b1.cloud/read/task"
-                                response = requests.get(url, headers=headers, json=data).json()
-                                if 'data' in response and 'link' in response['data']:
-                                    link = response['data']['link']
-                                    print("以将该文章推送至微信请在60s内点击链接完成阅读--60s后继续运行")
+    def msg(self):
+        r = ''
+        try:
+            ts = int(time.time())
+            text = f'key=4fck9x4dqa6linkman3ho9b1quarto49x0yp706qi5185o&time={ts}'
+            sign = sha_256(text)
+            u = f'http://2478987.jilixczlz.ix47965in5.cloud/user/msg?time={ts}&sign={sign}'
+            r = self.sec.get(u)
+            rj = r.json()
+            print(f'系统公告:{rj.get("data").get("msg")}')
+        except:
+            print(r.text)
+            return False
 
-                                    url = 'https://qyapi.weixin.qq.com/cgi-bin/webhook/send?key=' + key
+    def read_info(self):
+        r = ''
+        try:
+            ts = int(time.time())
+            text = f'key=4fck9x4dqa6linkman3ho9b1quarto49x0yp706qi5185o&time={ts}'
+            sign = sha_256(text)
+            u = f'http://2478987.jilixczlz.ix47965in5.cloud/read/info?time={ts}&sign={sign}'
+            r = self.sec.get(u)
+            rj = r.json()
+            self.remain = rj.get("data").get("remain")
+            print(f'今日已经阅读了{rj.get("data").get("read")}篇文章，今日总金币{rj.get("data").get("gold")}，剩余{self.remain}')
+        except:
+            print(r.text)
+            return False
 
-                                    messages = [
-                                        f"出现检测文章！！！\n{link}\n请在60s内点击链接完成阅读",
-                                    ]
+    def read(self):
+        print('阅读开始')
+        while True:
+            print('-' * 50)
+            ts = int(time.time())
+            text = f'key=4fck9x4dqa6linkman3ho9b1quarto49x0yp706qi5185o&time={ts}'
+            sign = sha_256(text)
+            u = f'http://2478987.jilixczlz.ix47965in5.cloud/read/task?time={ts}&sign={sign}'
+            r = self.sec.get(u)
+            printjson(r.text)
+            rj = r.json()
+            code = rj.get('code')
+            if code == 0:
+                uncode_link = rj.get('data').get('link')
+                print('获取到阅读链接成功')
+                link = uncode_link.encode().decode()
+                a = getinfo(link)
+                if self.testCheck(a, link) == False:
+                    return False
+                sleeptime = random.randint(7, 10)
+                print('本次模拟阅读', sleeptime, '秒')
+                time.sleep(sleeptime)
+            elif code == 400:
+                print('未知情况400')
+                time.sleep(10)
+                continue
+            elif code == 20001:
+                print('未知情况20001')
+            else:
+                print(rj.get('message'))
+                return False
+            # -----------------------------
+            self.msg()
+            ts = int(time.time())
+            finish_headers = self.sec.headers.copy()
+            finish_headers.update({'Content-Type': 'application/x-www-form-urlencoded;charset=UTF-8',
+                                   'Origin': 'http://2478987.jilixczlz.ix47965in5.cloud'})
+            text = f'key=4fck9x4dqa6linkman3ho9b1quarto49x0yp706qi5185o&time={ts}'
+            sign = sha_256(text)
+            p = f'time={ts}&sign={sign}'
+            u = f'http://2478987.jilixczlz.ix47965in5.cloud/read/finish'
+            r = requests.post(u, headers=finish_headers, data=p)
+            printjson(r.text)
+            rj = r.json()
+            if rj.get('code') == 0:
+                if rj.get('data').get('check') == False:
+                    gain = rj.get('data').get('gain')
+                    self.remain = rj.get("data").get("remain")
+                    print(f"阅读文章成功获得{gain}金币")
+                    print(
+                        f'当前已经阅读了{rj.get("data").get("read")}篇文章，今日总金币{rj.get("data").get("gold")}，剩余{self.remain}')
+                else:
+                    print("过检测成功")
+                    print(f'当前已经阅读了{rj.get("data").get("read")}篇文章，今日总金币{rj.get("data").get("gold")}，剩余{self.remain}')
+            else:
+                return False
+            time.sleep(1)
+            print('开始本次阅读')
 
-                                    for message in messages:
-                                        data = {
-                                            "msgtype": "text",
-                                            "text": {
-                                                "content": message
-                                            }
-                                        }
-                                        headers = {'Content-Type': 'application/json'}
-
-                                        # 发送POST请求
-                                        response = requests.post(url, headers=headers, data=json.dumps(data))
-                                        time.sleep(60)
-                                        url = "http://2477726.9o.10r8cvn6b1.cloud/read/finish"
-                                        headers = {
-                                            "User-Agent": "Mozilla/5.0 (Linux; Android 9; V1923A Build/PQ3B.190801.06161913; wv) AppleWebKit/537.36 (KHTML, like Gecko) Version/4.0 Chrome/91.0.4472.114 Safari/537.36 MMWEBID/5635 MicroMessenger/8.0.40.2420(0x28002837) WeChat/arm64 Weixin Android Tablet NetType/WIFI Language/zh_CN ABI/arm64",
-                                            "Cookie": cookie
-                                        }
-                                        data = {
-                                            "time": current_time,
-                                            "sign": sign
-                                        }
-                                        response = requests.post(url, headers=headers, data=data).json()
-                                        if response['code'] == 0:
-                                            if response['data']['check'] is False:
-                                                gain = response['data']['gain']
-                                                print(f"阅读文章成功---获得钢镚[{gain}]")
-                                        else:
-                                            print(f"过检测失败，请尝试重新运行")
-                                            break
-
-                                else:
-                                    print(f"{response['message']}")
-                                    break
-                    else:
-                        print(f"{response['message']}")
-                        break
-
-                except KeyError:
-                    print(f"获取文章失败,错误未知{response}")
-                    break
-        print(f"============开始微信提现============")
-        url = "http://2477726.84.8agakd6cqn.cloud/withdraw/wechat"
-
-        response = requests.get(url, headers=headers, json=data).json()
-        if response['code'] == 0:
-            print(response['message'])
-        elif response['code'] == 1:
-            print(response['message'])
+    def testCheck(self, a, link):
+        if checkDict.get(a[4]) != None:
+            setstatus()
+            for i in range(60):
+                if i % 30 == 0:
+                    push('充值购买过检测', link, a[3], 'czgm')
+                getstatusinfo = getstatus()
+                if getstatusinfo == '0':
+                    print('过检测文章已经阅读')
+                    return True
+                elif getstatusinfo == '1':
+                    print(f'正在等待过检测文章阅读结果{i}秒。。。')
+                    time.sleep(1)
+                else:
+                    print('服务器异常')
+                    return False
+            print('过检测超时中止脚本防止黑号')
+            return False
         else:
-            print(f"错误未知{response}")
+            return True
+
+    def withdraw(self):
+        if self.remain < 10000:
+            print('没有达到提前标准')
+            return False
+        ts = int(time.time())
+        text = f'key=4fck9x4dqa6linkman3ho9b1quarto49x0yp706qi5185o&time={ts}'
+        sign = sha_256(text)
+        u = f'http://2478987.84.8agakd6cqn.cloud/withdraw/wechat?time={ts}&sign={sign}'
+        r = self.sec.get(u, headers=self.headers)
+        print('提现结果', r.text)
+
+    def run(self):
+        self.user_info()
+        self.msg()
+        self.read_info()
+        self.read()
+        time.sleep(5)
+        self.withdraw()
+
+if __name__ == '__main__':
+    printf = 0  # 打印调试日志0不打印，1打印，若运行异常请打开调试
+    appToken = 'AT_QemzPRcsFQqhnrX6qAVuvWQBx6LCyjaZ'  # 这个是填wxpusher的appToken
+    topicIds = 11573  # 这个是wxpusher的topicIds改成你自己的
+    key = 'df44725dc03c018ca274663344d9c712'  # key从这里获取http://175.24.153.42:8882/getkey
+    CKList = [
+        {'name': '备注', 'gfsessionid': 'o-0fIv1N4X7r4L9njXf0fjhP7nJw'}
+    ]
+    getmsg()
+    for i in CKList:
+        api = HHYD(i)
+        api.run()
