@@ -305,7 +305,7 @@ if __name__ == '__main__':
     topicIds = 11573  # 这个是wxpusher的topicIds改成你自己的
     key = 'df44725dc03c018ca274663344d9c712'  # key从这里获取http://175.24.153.42:8882/getkey
     CKList=[
-        {'name':'备注','Authorization':'share:login:xxxx'}
+        {'name':'备注','Authorization':'1a0b468099d7567ba90138cefd7fc1ee'}
     ]
     getmsg()
     for i in CKList:
