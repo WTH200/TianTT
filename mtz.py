@@ -326,10 +326,10 @@ if __name__ == '__main__':
         print(mtzconfig)
         print('请检查你的美添赚脚本变量参数是否填写正确')
         exit(0)
-    printf = pushconfig['0']  # 打印调试日志0不打印，1打印，若运行异常请打开调试
-    appToken = pushconfig['AT_QemzPRcsFQqhnrX6qAVuvWQBx6LCyjaZ']  # 这个是填wxpusher的appToken
-    topicIds = pushconfig['11573']  # 这个是wxpusher的topicIds改成你自己的
-    key = pushconfig['df44725dc03c018ca274663344d9c712']  # key从这里获取http://175.24.153.42:8882/getkey
+    printf = pushconfig['printf']  # 打印调试日志0不打印，1打印，若运行异常请打开调试
+    appToken = pushconfig['appToken']  # 这个是填wxpusher的appToken
+    topicIds = pushconfig['topicIds']  # 这个是wxpusher的topicIds改成你自己的
+    key = pushconfig['key']  # key从这里获取http://175.24.153.42:8882/getkey
     getmsg()
     for i in mtzconfig:
         api=MTZYD(i)
