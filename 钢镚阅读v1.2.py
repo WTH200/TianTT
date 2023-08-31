@@ -1,22 +1,30 @@
 '''
 活动入口,微信打开：http://2478987.epghgkvalp.wjbk.25obcxyume.cloud/?p=2478987
 打开活动入口，抓包的任意接口cookies中的gfsessionid参数,
-填到脚本下方的,
-脚本下方的,
-脚本下方的 CKList配置中,把xxxx替换成你的gfsessionid参数
-单账户 CKList=[{'gfsessionid': 'xxxx'}]
-多账户CKList=[{'gfsessionid': 'xxxx'},{'gfsessionid': 'xxxx'},{'gfsessionid': 'xxxx'},]
 
-其他参数说明（脚本最下方填写参数）
+注意：脚本变量使用的单引号、双引号、逗号都是英文状态的
+注意：脚本变量使用的单引号、双引号、逗号都是英文状态的
+注意：脚本变量使用的单引号、双引号、逗号都是英文状态的
 
-内置推送第三方 wxpusher（脚本最下方填写参数）
-appToken = 'xxx'  # 这个是填wxpusher的appToken
-topicIds = 0  # 这个是wxpusher的topicIds改成你自己的
-具体使用方法请看文档地址：https://wxpusher.zjiecode.com/docs/#/
+青龙添加环境变量名称 ：czgmconfig
+青龙添加环境变量参数
+单账户 ['xxxx']
+多账户['xxxx','xxxx','xxxx']
+例如：['729ac1356xxxxb7407bd2ea']
+例如：['123456','djvnffff','xxxxx']
 
-回调服务器（脚本最下方填写参数）
-key=''这个是回调服务器的key
-key访问http://175.24.153.42:8882/getkey获取
+
+
+提现标准默认是10000，与需要修改，请在本脚本最下方，按照提示修改
+内置推送第三方 wxpusher(其他脚本添加过，无需重复添加)
+青龙添加环境变量名称 ：pushconfig
+青龙添加环境变量参数 ：{"printf":0,"appToken":"xxxx","topicIds":4781,"key":"xxxx"}
+例如：{"printf":0,"appToken":"AT_r1vNXQdfgxxxxxscPyoORYg","topicIds":1234,"key":"642ae5f1xxxxx6d2334c"}
+
+printf 0是不打印调试日志，1是打印调试日志
+appToken 这个是填wxpusher的appToken
+topicIds 这个是wxpusher的topicIds改成你自己的,在主题管理里能看到应用的topicIds 具体使用方法请看文档地址：https://wxpusher.zjiecode.com/docs/#/
+key 访问http://175.24.153.42:8882/getkey获取
 
 定时运行每小时一次
 达到标准自动提现
@@ -26,6 +34,8 @@ import hashlib
 import requests
 import random
 import re
+import json
+import os
 checkDict = {
     'MzkyMzI5NjgxMA==': ['每天趣闻事', ''],
     'MzkzMzI5NjQ3MA==': ['欢闹青春', ''],
@@ -36,7 +46,7 @@ checkDict = {
     'MzI1ODcwNTgzNA==': ['麻辣资讯', 'gh_1df5b5259cba'],
 }
 def getmsg():
-    lvsion = 'v1.1'
+    lvsion = 'v1.2'
     r=''
     try:
         u='http://175.24.153.42:8881/getmsg'
@@ -47,7 +57,7 @@ def getmsg():
         gdict = rj.get('gdict')
         gmmsg = rj.get('gmmsg')
         print('系统公告:',gmmsg)
-        print(f'最新版本{version},当前版本{lvsion}')
+        print(f'最新版本{version}当前版本{lvsion}')
         print(f'系统的公众号字典{len(gdict)}个:{gdict}')
         print(f'本脚本公众号字典{len(checkDict.values())}个:{list(checkDict.keys())}')
         print('='*50)
@@ -311,14 +321,34 @@ class HHYD():
         self.withdraw()
 
 if __name__ == '__main__':
-    printf = 0  # 打印调试日志0不打印，1打印，若运行异常请打开调试
-    appToken = 'AT_QemzPRcsFQqhnrX6qAVuvWQBx6LCyjaZ'  # 这个是填wxpusher的appToken
-    topicIds = 11573  # 这个是wxpusher的topicIds改成你自己的
-    key = 'df44725dc03c018ca274663344d9c712'  # key从这里获取http://175.24.153.42:8882/getkey
-    CKList = [
-        {'name': '备注', 'gfsessionid': 'o-0fIv1N4X7r4L9njXf0fjhP7nJw'}
-    ]
+    pushconfig = os.getenv('pushconfig')
+    print(pushconfig)
+    if pushconfig == None:
+        print('请检查你的推送变量名称是否填写正确')
+        exit(0)
+    try:
+        pushconfig = json.loads(pushconfig.replace("'", '"'))
+    except Exception as e:
+        print(e)
+        print(pushconfig)
+        print('请检查你的推送变量参数是否填写正确')
+        exit(0)
+    czgmconfig = os.getenv('czgmconfig')
+    if czgmconfig == None:
+        print('请检查你的充值购买脚本变量名称是否填写正确')
+        exit(0)
+    try:
+        czgmconfig = json.loads(czgmconfig.replace("'", '"'))
+    except Exception as e:
+        print(e)
+        print(czgmconfig)
+        print('请检查你的充值购买脚本变量参数是否填写正确')
+        exit(0)
+    printf = pushconfig['printf']
+    appToken = pushconfig['appToken']
+    topicIds = pushconfig['topicIds']
+    key = pushconfig['key']
     getmsg()
-    for i in CKList:
-        api = HHYD(i)
+    for i in czgmconfig:
+        api = HHYD({'gfsessionid': i})
         api.run()
