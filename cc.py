@@ -24,7 +24,7 @@ import time
 # import cv2
 # import numpy as np
 import requests
-#from retrying import retry
+from retrying import retry
 
 CCB_CK_LIST = []
 
