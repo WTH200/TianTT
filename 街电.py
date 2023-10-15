@@ -5,7 +5,7 @@ import requests as req
 import multiprocessing as mp
 # import urllib.parse  # 用于url code 的编解码
 # from costtime import time_counts  # 用来统计时间
-import sendNotify  # 发通知
+#import sendNotify  # 发通知
 # from requests import HTTPError
 
 #################################
